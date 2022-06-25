@@ -36,10 +36,8 @@ $container_command run --name currency-comparison-postgresql-db \
 $container_command build -t currency-comparison --file Containerfile .
 
 $container_command run --name currency-comparison \
-  -p "5000:5000" \ 
-  -p "$POSTGRESQL_PORT:$POSTGRESQL_PORT" \
-  -p "$REDIS_PORT:$REDIS_PORT" \
-  --rm \
+  -e "POSTGRESQL_PASSWORD=$POSTGRESQL_PASSWORD" \
+  --network host --rm \
   currency-comparison
 
 $container_command stop -t 1 currency-comparison-redis-cache
