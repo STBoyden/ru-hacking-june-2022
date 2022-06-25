@@ -104,7 +104,7 @@ def reformat_dict(
     increased = float(value_change) >= 0
 
     return {
-        "title": title,
+        "title": f"{base_currency_title} value in comparison to {title}",
         "detail":
             f"As of {date}, the {base_currency_title} is worth {value} {title}. " +
             f"Compared to the day before, {day_before_date}, where the {base_currency_title} was worth {yesterday_value} {title}. " +
@@ -163,8 +163,7 @@ async def get_today(base_currency_id: str) -> list[dict[str, any]]:
     return get_data(base_currency_id, API_URI_TODAY)
 
 @app.get("/")
-@app.get("/<currency_id>")
-@cache.cached()
+@cache.memoize(1000)
 async def root(currency_id: str = "gbp"):
     get_yesterday(currency_id)
     return { "items": get_today(currency_id) }
