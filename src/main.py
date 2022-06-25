@@ -78,7 +78,10 @@ def reformat_dict(
     base_currency_title = get_title(base_currency_id)
     value = ""
     yesterday_value = ""
+    _y = get_yesterday_value(currency_id)
+    value_change = ""
     date = reformat_date(data["date"])
+    increased = False
 
     # If rounded to two decimal places, GBP to BTC registers as GBP being worth
     # 0 BTC, which is obviously not true. So for Bitcoin, we increase the
@@ -87,16 +90,21 @@ def reformat_dict(
     # This should hold true for lower value currencies too.
     if currency_id != "btc":
         value = f"{data[currency_id]:.4f}"
-        yesterday_value = f"{get_yesterday_value(currency_id):.4f}"
+        yesterday_value = f"{_y:.4f}"
+        value_change=f"{((_y - data[currency_id])/data[currency_id])*100:.2f}"
     else:
         value = f"{data[currency_id]:.8f}"
-        yesterday_value = f"{get_yesterday_value(currency_id):.8f}"
+        yesterday_value = f"{_y:.8f}"
+        value_change=f"{((_y - data[currency_id])/data[currency_id])*100:.4f}"
+
+    increased = float(value_change) >= 0
 
     return {
         "title": title,
         "description": 
             f"As of {date}, the {base_currency_title} is worth {value} {title}. " +
-            f"Compared to yesterday, where the {base_currency_title} was worth {yesterday_value} {title}"
+            f"Compared to yesterday, where the {base_currency_title} was worth {yesterday_value} {title}. " +
+            f"This marks a {abs(float(value_change))}% {'increase' if increased else 'decrease'} in value since last record."
     }
 
 
