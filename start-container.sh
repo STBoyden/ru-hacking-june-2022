@@ -21,12 +21,12 @@ fi
 source .env-dev.sh
 
 $container_command run --name currency-comparison-redis-cache \
-  -p "$REDIS_PORT:$REDIS_PORT" \
+  --network host \
   --rm \
   -d redis:alpine
 
 $container_command run --name currency-comparison-postgresql-db \
-  -p "$POSTGRESQL_PORT:$POSTGRESQL_PORT" \
+  --network host \
   -e "POSTGRESQL_USER=$POSTGRESQL_USER" \
   -e "POSTGRESQL_PASSWORD=$POSTGRESQL_PASSWORD" \
   --rm \
