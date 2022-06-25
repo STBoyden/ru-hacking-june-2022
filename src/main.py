@@ -101,7 +101,7 @@ def reformat_dict(
 
     return {
         "title": title,
-        "description": 
+        "detail":
             f"As of {date}, the {base_currency_title} is worth {value} {title}. " +
             f"Compared to yesterday, where the {base_currency_title} was worth {yesterday_value} {title}. " +
             f"This marks a {abs(float(value_change))}% {'increase' if increased else 'decrease'} in value since last record."
