@@ -20,13 +20,17 @@ fi
 
 source .env-dev.sh
 
+$container_command network create cc
+
 $container_command run --name currency-comparison-redis-cache \
-  --network host \
+  --network cc \
+  -p "$REDIS_PORT:$REDIS_PORT" \
   --rm \
   -d redis:alpine
 
 $container_command run --name currency-comparison-postgresql-db \
-  --network host \
+  --network cc \
+  -p "$POSTGRESQL_PORT:$POSTGRESQL_PORT" \
   -e "POSTGRESQL_USER=$POSTGRESQL_USER" \
   -e "POSTGRESQL_PASSWORD=$POSTGRESQL_PASSWORD" \
   --rm \
@@ -36,9 +40,15 @@ $container_command run --name currency-comparison-postgresql-db \
 $container_command build -t currency-comparison --file Containerfile .
 
 $container_command run --name currency-comparison \
+  --network cc \
+  -e "REDIS_HOST=currency-comparison-redis-cache" \
+  -e "POSTGRESQL_HOST=currency-comparison-postgresql-db" \
   -e "POSTGRESQL_PASSWORD=$POSTGRESQL_PASSWORD" \
-  --network host --rm \
+  --rm \
+  -p "5000:5000" \
   currency-comparison
 
 $container_command stop -t 1 currency-comparison-redis-cache
 $container_command stop -t 1 currency-comparison-postgresql-db
+
+$container_command network rm cc
