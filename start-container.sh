@@ -18,13 +18,6 @@ if [[ "$container_command" == "docker" && $(id -u) != "0" ]]; then
   exit 1
 fi
 
-python3 -m pip install -r ./requirements.txt 1>/dev/null
-
-if [[ -z $(which quart 2>/dev/null) ]]; then
-  echo "Please install Quart!"
-  exit 1
-fi
-
 source .env-dev.sh
 
 $container_command run --name currency-comparison-redis-cache \
@@ -40,7 +33,14 @@ $container_command run --name currency-comparison-postgresql-db \
   -v currency-comparison-postgresql-db:/bitnami/postgresql \
   -d bitnami/postgresql:latest
 
-quart run
+$container_command build -t currency-comparison .
+
+$container_command run --name currency-comparison \
+  -p "5000:5000" \ 
+  -p "$POSTGRESQL_PORT:$POSTGRESQL_PORT" \
+  -p "$REDIS_PORT:$REDIS_PORT" \
+  --rm \
+  currency-comparison
 
 $container_command stop -t 1 currency-comparison-redis-cache
 $container_command stop -t 1 currency-comparison-postgresql-db
