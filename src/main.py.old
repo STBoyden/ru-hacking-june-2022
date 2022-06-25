@@ -1,0 +1,38 @@
+from flask import Flask, jsonify
+import random
+import requests
+
+API_URI = "https://pokeapi.co/api/v2/"
+POKEMON_MAX_ID = 913
+
+app = Flask("poké-phone")
+
+def generate_description(data: dict[any, any]) -> str:
+    return ""
+    
+
+def reformat(data: dict[any, any]) -> dict[str, str]:
+    return {
+        "title": data["varieties"][0]["pokemon"]["name"].capitalize(),
+        "description": generate_description(data)
+    }
+
+
+def get_items() -> dict[str, dict[str, any]]:
+    """
+    Returns the data in the correct format for each specified Pokémon ID
+    """
+
+    pokemon_data = []
+    pokemon_ids = [random.randint(1, POKEMON_MAX_ID) for x in range(0, 10)]
+
+    for id in pokemon_ids:
+        url = f"{API_URI}/pokemon-species/{id}"
+        data = requests.get(url = url).json()
+        pokemon_data.append(reformat(data))
+
+    return { "items" : pokemon_data }
+
+@app.get("/")
+def root():
+    return get_items()
