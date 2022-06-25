@@ -26,16 +26,18 @@ def get_yesterday_value(currency_id: str):
     Fetches yesterday's value for the specified `currency_id`.
     """
 
-    (value, *_) = db.session.query(Entry.value)\
+    result = db.session.query(Entry.value)\
                       .filter_by(
                               currency_id = currency_id,
                               date = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
                       )\
                       .first()
 
-    if not value == None:
+    if result:
+        (value, *_) = result
         return value
-    else: return "(Unknown)"
+
+    return "(Unknown)"
 
 def reformat_date(date: str) -> str:
     """
