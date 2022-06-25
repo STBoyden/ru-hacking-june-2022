@@ -33,7 +33,7 @@ $container_command run --name currency-comparison-postgresql-db \
   -v currency-comparison-postgresql-db:/bitnami/postgresql \
   -d bitnami/postgresql:latest
 
-$container_command build -t currency-comparison .
+$container_command build -t currency-comparison --file ./Containerfile
 
 $container_command run --name currency-comparison \
   -p "5000:5000" \ 
