@@ -15,8 +15,8 @@ fi
 
 python3 -m pip install -r ./requirements.txt 1>/dev/null
 
-if [[ -z $(which flask 2>/dev/null) ]]; then
-  echo "Please install Flask!"
+if [[ -z $(which quart 2>/dev/null) ]]; then
+  echo "Please install Quart!"
   exit 1
 fi
 
@@ -27,6 +27,15 @@ $container_command run --name currency-comparison-redis-cache \
   --rm \
   -d redis:alpine
 
-flask run
+$container_command run --name currency-comparison-postgresql-db \
+  -p "$POSTGRESQL_PORT:$POSTGRESQL_PORT" \
+  -e "POSTGRESQL_USER=$POSTGRESQL_USER" \
+  -e "POSTGRESQL_PASSWORD=$POSTGRESQL_PASSWORD" \
+  --rm \
+  -v currency-comparison-postgresql-db:/bitnami/postgresql \
+  -d bitnami/postgresql:latest
+
+quart run
 
 $container_command stop -t 1 currency-comparison-redis-cache
+$container_command stop -t 1 currency-comparison-postgresql-db

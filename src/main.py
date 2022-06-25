@@ -1,8 +1,8 @@
-from flask import Flask
-from flask_caching import Cache
-from datetime import datetime
+from datetime import datetime, timedelta
+from entry import Entry, create_if_not_exists
+from app import app, cache, db, API_URI_TODAY, API_URI_YESTERDAY, CURRENCY_LIST
 
-import os
+import asyncio
 import requests
 
 
@@ -21,25 +21,19 @@ Default currency list:
  10. BTC (Bitcoin)
 """
 
-CURRENCY_LIST = [
-    "usd", "eur", "jpy", "aud", "cad",
-    "chf", "cny", "hkd", "nzd", "btc"
-]
+def get_yesterday_value(currency_id: str):
+    """
+    Fetches yesterday's value for the specified `currency_id`.
+    """
 
-# API_URI = "https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/"
-API_URI = "https://raw.githubusercontent.com/fawazahmed0/currency-api/1/latest"
+    (value, *_) = db.session.query(Entry.value)\
+                      .filter_by(
+                              currency_id = currency_id,
+                              date = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
+                      )\
+                      .first()
 
-app_config = {
-    "CACHE_TYPE": "RedisCache",
-    "CACHE_DEFAULT_TIMEOUT": 1000,
-    "CACHE_REDIS_HOST": os.environ.get("REDIS_HOST"),
-    "CACHE_REDIS_PORT": int(os.environ.get("REDIS_PORT")),
-    "CACHE_REDIS_DB": 1,
-}
-
-app = Flask("currency-value")
-app.config.from_mapping(app_config)
-cache = Cache(app)
+    return value
 
 def reformat_date(date: str) -> str:
     """
@@ -57,7 +51,7 @@ def get_title(currency_id: str) -> str:
     Gets the actual name of the currency from the given `currency_id`.
     """
 
-    url = f"{API_URI}/currencies.min.json"
+    url = f"{API_URI_TODAY}/currencies.min.json"
     title: str = dict(requests.get(url = url).json())[currency_id]
 
     words: list[str] = title.split(' ')
@@ -79,6 +73,7 @@ def reformat_dict(
     title = get_title(currency_id)
     base_currency_title = get_title(base_currency_id)
     value = ""
+    yesterday_value = ""
     date = reformat_date(data["date"])
 
     # If rounded to two decimal places, GBP to BTC registers as GBP being worth
@@ -87,17 +82,22 @@ def reformat_dict(
     #
     # This should hold true for lower value currencies too.
     if currency_id != "btc":
-        value = f"{data[currency_id]:.2f}"
+        value = f"{data[currency_id]:.4f}"
+        yesterday_value = f"{get_yesterday_value(currency_id):.4f}"
     else:
         value = f"{data[currency_id]:.8f}"
+        yesterday_value = f"{get_yesterday_value(currency_id):.8f}"
 
     return {
         "title": title,
-        "description": f"As of {date}, the {base_currency_title} is worth {value} {title}."
+        "description": 
+            f"As of {date}, the {base_currency_title} is worth {value} {title}. " +
+            f"Compared to yesterday, where the {base_currency_title} was worth {yesterday_value} {title}"
     }
 
+
 @cache.memoize(1000)
-def get_data(base_currency_id: str) -> list[dict[str, any]]:
+async def get_data(base_currency_id: str, base: str) -> list[dict[str, any]]:
     """
     Returns the full comparison list for each of the specified currencies in
     CURRENCY_LIST, calling the appropriate formatting functions so that the
@@ -106,16 +106,53 @@ def get_data(base_currency_id: str) -> list[dict[str, any]]:
 
     currency_comparisons = []
 
+    date = ""
+    if base == API_URI_YESTERDAY:
+        date = (datetime.now() - timedelta(1)).strftime("%Y-%m-%d")
+    else:
+        date = datetime.now().strftime("%Y-%m-%d")
+
     for currency_id in CURRENCY_LIST:
-        url = f"{API_URI}/currencies/{base_currency_id}/{currency_id}.min.json"
+        url = f"{base}/currencies/{base_currency_id}/{currency_id}.min.json"
         data: dict[str, any] = dict(requests.get(url = url).json())
         currency_comparisons.append(reformat_dict(data, currency_id, base_currency_id))
+        entry = Entry(
+            currency_id = currency_id,
+            date = date,
+            value = data[currency_id]
+        )
+        create_if_not_exists(entry)
+
+    db.session.commit()
 
     return currency_comparisons
+
+
+@cache.memoize(1000)
+async def get_yesterday(base_currency_id: str) -> list[dict[str, any]]:
+    """
+    Fetches the data from the API about yesterday's currency values, populating
+    the database for later usage.
+    """
+
+    return get_data(base_currency_id, API_URI_YESTERDAY)
+
+@cache.memoize(1000)
+async def get_today(base_currency_id: str) -> list[dict[str, any]]:
+    """
+    Fetches the data from the API about today's currency values, populating the
+    database for later usage.
+    """
+
+    return get_data(base_currency_id, API_URI_TODAY)
 
 @app.get("/")
 @app.get("/<currency_id>")
 @cache.cached()
-def root(currency_id: str = "gbp"):
-    return { "items": get_data(currency_id) }
+async def root(currency_id: str = "gbp"):
+    get_yesterday(currency_id)
+    return { "items": get_today(currency_id) }
 
+
+if __name__ == "__main__":
+    asyncio.run(app.run())
