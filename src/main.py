@@ -1,8 +1,10 @@
-from flask import Flask, jsonify
+from flask import Flask
 from flask_caching import Cache
 from datetime import datetime
-import random
+
+import os
 import requests
+
 
 """
 Default currency list:
@@ -28,8 +30,11 @@ CURRENCY_LIST = [
 API_URI = "https://raw.githubusercontent.com/fawazahmed0/currency-api/1/latest"
 
 app_config = {
-    "CACHE_TYPE": "SimpleCache",
-    "CACHE_DEFAULT_TIMEOUT": 1000
+    "CACHE_TYPE": "RedisCache",
+    "CACHE_DEFAULT_TIMEOUT": 1000,
+    "CACHE_REDIS_HOST": os.environ.get("REDIS_HOST"),
+    "CACHE_REDIS_PORT": int(os.environ.get("REDIS_PORT")),
+    "CACHE_REDIS_DB": 1,
 }
 
 app = Flask("currency-value")
@@ -46,7 +51,7 @@ def reformat_date(date: str) -> str:
 
     return date.strftime("%A %-d %B %Y")
 
-@cache.memoize(timeout = 1000)
+@cache.memoize(1000)
 def get_title(currency_id: str) -> str:
     """
     Gets the actual name of the currency from the given `currency_id`.
@@ -91,7 +96,7 @@ def reformat_dict(
         "description": f"As of {date}, the {base_currency_title} is worth {value} {title}."
     }
 
-@cache.memoize(timeout = 1000)
+@cache.memoize(1000)
 def get_data(base_currency_id: str) -> list[dict[str, any]]:
     """
     Returns the full comparison list for each of the specified currencies in
@@ -109,7 +114,8 @@ def get_data(base_currency_id: str) -> list[dict[str, any]]:
     return currency_comparisons
 
 @app.get("/")
+@app.get("/<currency_id>")
 @cache.cached()
-def root():
-    return { "items": get_data("gbp") }
+def root(currency_id: str = "gbp"):
+    return { "items": get_data(currency_id) }
 
