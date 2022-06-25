@@ -82,6 +82,10 @@ def reformat_dict(
     value_change = ""
     date = reformat_date(data["date"])
     increased = False
+    day_before_date = reformat_date(
+        (datetime.strptime(data["date"], "%Y-%m-%d") - timedelta(1))\
+            .strftime("%Y-%m-%d")
+    )
 
     # If rounded to two decimal places, GBP to BTC registers as GBP being worth
     # 0 BTC, which is obviously not true. So for Bitcoin, we increase the
@@ -103,7 +107,7 @@ def reformat_dict(
         "title": title,
         "detail":
             f"As of {date}, the {base_currency_title} is worth {value} {title}. " +
-            f"Compared to yesterday, where the {base_currency_title} was worth {yesterday_value} {title}. " +
+            f"Compared to the day before, {day_before_date}, where the {base_currency_title} was worth {yesterday_value} {title}. " +
             f"This marks a {abs(float(value_change))}% {'increase' if increased else 'decrease'} in value since last record."
     }
 
