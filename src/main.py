@@ -37,7 +37,7 @@ def get_yesterday_value(currency_id: str):
         (value, *_) = result
         return value
 
-    return "(Unknown)"
+    return 0
 
 def reformat_date(date: str) -> str:
     """
