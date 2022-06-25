@@ -33,7 +33,9 @@ def get_yesterday_value(currency_id: str):
                       )\
                       .first()
 
-    return value
+    if not value == None:
+        return value
+    else: return "(Unknown)"
 
 def reformat_date(date: str) -> str:
     """
